@@ -474,6 +474,18 @@ function Index() {
               if (killed) {
                 scoreRef.current += e.reward;
                 setScore(scoreRef.current);
+                // floating reward text — escala com o tipo de inimigo
+                const lifeF = e.kind === "tank" ? 1.4 : e.kind === "slow" ? 1.1 : 0.9;
+                floaters.current.push({
+                  x: e.x,
+                  y: e.y - e.radius - 4,
+                  vy: -55,
+                  text: `+${e.reward}`,
+                  color: e.kind === "tank" ? "#ffd54a" : e.kind === "slow" ? "#c9b3ff" : "#ffffff",
+                  life: lifeF,
+                  maxLife: lifeF,
+                  size: e.kind === "tank" ? 28 : e.kind === "slow" ? 22 : 18,
+                });
               }
             }
           }
