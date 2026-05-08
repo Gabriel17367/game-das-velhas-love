@@ -601,6 +601,33 @@ function Index() {
       }
       ctx.restore();
 
+      // floating reward texts
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const f of floaters.current) {
+        const t = f.life / f.maxLife; // 1 -> 0
+        const alpha = Math.min(1, t * 1.4);
+        const scale = 0.85 + (1 - t) * 0.25;
+        const size = f.size * scale;
+        ctx.font = `bold ${size}px system-ui, sans-serif`;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = `rgba(0,0,0,${0.7 * alpha})`;
+        ctx.fillStyle = f.color
+          .replace("#", "")
+          .match(/.{2}/g)
+          ? `rgba(${parseInt(f.color.slice(1, 3), 16)},${parseInt(
+              f.color.slice(3, 5),
+              16,
+            )},${parseInt(f.color.slice(5, 7), 16)},${alpha})`
+          : f.color;
+        const x = f.x - cam.x;
+        const y = f.y - cam.y;
+        ctx.strokeText(f.text, x, y);
+        ctx.fillText(f.text, x, y);
+      }
+      ctx.restore();
+
       // bullets
       ctx.fillStyle = "#ffd54a";
       for (const b of bullets.current) {
