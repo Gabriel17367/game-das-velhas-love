@@ -51,6 +51,29 @@ function Index() {
       <h1 className="text-4xl font-bold tracking-tight text-foreground">Jogo da Velha</h1>
       <p className="text-lg text-muted-foreground">{status}</p>
 
+      <div className="flex gap-2">
+        <button
+          onClick={() => setXIsNext(true)}
+          className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+            xIsNext
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-card-foreground hover:bg-accent"
+          }`}
+        >
+          Jogar (X)
+        </button>
+        <button
+          onClick={() => setXIsNext(false)}
+          className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+            !xIsNext
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-card-foreground hover:bg-accent"
+          }`}
+        >
+          Jogar (O)
+        </button>
+      </div>
+
       <div className="grid grid-cols-3 gap-2">
         {squares.map((value, i) => (
           <button
