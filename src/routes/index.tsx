@@ -448,6 +448,7 @@ function Index() {
           const d = Math.hypot(dx, dy) || 1;
           e.x += (dx / d) * e.speed * dt;
           e.y += (dy / d) * e.speed * dt;
+          if (e.hitFlash > 0) e.hitFlash -= dt;
           if (d < e.radius + 8) {
             hpRef.current -= e.damage * dt;
             setHp(Math.max(0, Math.round(hpRef.current)));
@@ -462,7 +463,11 @@ function Index() {
             if (dd < e.radius + 2) {
               e.hp -= 1;
               b.life = 0;
-              if (e.hp <= 0) {
+              const killed = e.hp <= 0;
+              e.hitFlash = FX_PROFILE[e.kind].flash;
+              spawnImpactParticles(e, b.vx, b.vy, killed);
+              playSfx(e.kind, killed);
+              if (killed) {
                 scoreRef.current += e.reward;
                 setScore(scoreRef.current);
               }
@@ -470,6 +475,16 @@ function Index() {
           }
         }
         enemies.current = enemies.current.filter((e) => e.hp > 0);
+
+        // particles update
+        for (const pt of particles.current) {
+          pt.x += pt.vx * dt;
+          pt.y += pt.vy * dt;
+          pt.vx *= 0.92;
+          pt.vy *= 0.92;
+          pt.life -= dt;
+        }
+        particles.current = particles.current.filter((p) => p.life > 0);
 
         if (hpRef.current <= 0) {
           runningRef.current = false;
