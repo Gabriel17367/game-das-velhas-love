@@ -502,6 +502,14 @@ function Index() {
         }
         particles.current = particles.current.filter((p) => p.life > 0);
 
+        // floating texts update
+        for (const f of floaters.current) {
+          f.y += f.vy * dt;
+          f.vy *= 0.96;
+          f.life -= dt;
+        }
+        floaters.current = floaters.current.filter((f) => f.life > 0);
+
         if (hpRef.current <= 0) {
           runningRef.current = false;
           setRunning(false);
