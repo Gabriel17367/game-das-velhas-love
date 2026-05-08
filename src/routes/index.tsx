@@ -543,6 +543,14 @@ function Index() {
         ctx.beginPath();
         ctx.arc(x, y, e.radius, 0, Math.PI * 2);
         ctx.fill();
+        // hit flash branco
+        if (e.hitFlash > 0) {
+          const a = Math.min(1, e.hitFlash / FX_PROFILE[e.kind].flash);
+          ctx.fillStyle = `rgba(255,255,255,${0.85 * a})`;
+          ctx.beginPath();
+          ctx.arc(x, y, e.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
         // health bar
         const bw = e.radius * 2;
         ctx.fillStyle = "#1a1a1a";
@@ -555,6 +563,19 @@ function Index() {
           4,
         );
       }
+
+      // particles (aditivo para sensação de brilho)
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (const p of particles.current) {
+        const a = Math.max(0, p.life / p.maxLife);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x - cam.x, p.y - cam.y, p.size * (0.6 + a * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
 
       // bullets
       ctx.fillStyle = "#ffd54a";
