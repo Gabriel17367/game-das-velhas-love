@@ -7,7 +7,46 @@ export const Route = createFileRoute("/")({
 
 type Vec = { x: number; y: number };
 type Bullet = Vec & { vx: number; vy: number; life: number };
-type Enemy = Vec & { hp: number; speed: number };
+type EnemyKind = "grunt" | "slow" | "tank";
+type Enemy = Vec & {
+  kind: EnemyKind;
+  hp: number;
+  maxHp: number;
+  speed: number;
+  radius: number;
+  damage: number; // dps on contact
+  reward: number; // score on kill
+  color: string;
+};
+
+const ENEMY_DEFS: Record<EnemyKind, Omit<Enemy, "x" | "y" | "hp" | "kind">> = {
+  grunt: {
+    maxHp: 2,
+    speed: 90,
+    radius: 14,
+    damage: 30,
+    reward: 1,
+    color: "#e3433b",
+  },
+  slow: {
+    // resistente a meio caminho, devagar, pouco dano
+    maxHp: 5,
+    speed: 45,
+    radius: 16,
+    damage: 18,
+    reward: 3,
+    color: "#9b6bff",
+  },
+  tank: {
+    // muito HP, bem lento, dano alto
+    maxHp: 12,
+    speed: 30,
+    radius: 22,
+    damage: 50,
+    reward: 8,
+    color: "#3a7d44",
+  },
+};
 
 const WORLD_W = 1600;
 const WORLD_H = 1000;
@@ -182,11 +221,28 @@ function Index() {
         x = 0;
         y = Math.random() * WORLD_H;
       }
+      // weighted pick: mais grunts no início, slow/tank ficam comuns conforme a partida
+      const s = scoreRef.current;
+      const wGrunt = 70;
+      const wSlow = Math.min(35, 8 + s * 0.6);
+      const wTank = Math.min(20, 2 + s * 0.4);
+      const total = wGrunt + wSlow + wTank;
+      const r = Math.random() * total;
+      const kind: EnemyKind =
+        r < wGrunt ? "grunt" : r < wGrunt + wSlow ? "slow" : "tank";
+      const def = ENEMY_DEFS[kind];
       enemies.current.push({
         x,
         y,
-        hp: 2,
-        speed: 60 + Math.random() * 60,
+        kind,
+        hp: def.maxHp,
+        maxHp: def.maxHp,
+        // pequena variação de velocidade para não andarem em bloco
+        speed: def.speed * (0.9 + Math.random() * 0.2),
+        radius: def.radius,
+        damage: def.damage,
+        reward: def.reward,
+        color: def.color,
       });
     };
 
@@ -248,8 +304,8 @@ function Index() {
           const d = Math.hypot(dx, dy) || 1;
           e.x += (dx / d) * e.speed * dt;
           e.y += (dy / d) * e.speed * dt;
-          if (d < 22) {
-            hpRef.current -= 30 * dt;
+          if (d < e.radius + 8) {
+            hpRef.current -= e.damage * dt;
             setHp(Math.max(0, Math.round(hpRef.current)));
           }
         }
@@ -259,11 +315,11 @@ function Index() {
           for (const e of enemies.current) {
             if (e.hp <= 0) continue;
             const dd = Math.hypot(b.x - e.x, b.y - e.y);
-            if (dd < 16) {
+            if (dd < e.radius + 2) {
               e.hp -= 1;
               b.life = 0;
               if (e.hp <= 0) {
-                scoreRef.current += 1;
+                scoreRef.current += e.reward;
                 setScore(scoreRef.current);
               }
             }
@@ -311,14 +367,34 @@ function Index() {
       for (const e of enemies.current) {
         const x = e.x - cam.x;
         const y = e.y - cam.y;
-        ctx.fillStyle = "#e3433b";
+        // tank ganha um anel de armadura; slow um halo roxo
+        if (e.kind === "tank") {
+          ctx.strokeStyle = "#1a1a1a";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(x, y, e.radius + 2, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (e.kind === "slow") {
+          ctx.fillStyle = "rgba(155,107,255,0.18)";
+          ctx.beginPath();
+          ctx.arc(x, y, e.radius + 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = e.color;
         ctx.beginPath();
-        ctx.arc(x, y, 14, 0, Math.PI * 2);
+        ctx.arc(x, y, e.radius, 0, Math.PI * 2);
         ctx.fill();
+        // health bar
+        const bw = e.radius * 2;
         ctx.fillStyle = "#1a1a1a";
-        ctx.fillRect(x - 14, y - 22, 28, 4);
+        ctx.fillRect(x - e.radius, y - e.radius - 8, bw, 4);
         ctx.fillStyle = "#3ddc84";
-        ctx.fillRect(x - 14, y - 22, (28 * e.hp) / 2, 4);
+        ctx.fillRect(
+          x - e.radius,
+          y - e.radius - 8,
+          (bw * e.hp) / e.maxHp,
+          4,
+        );
       }
 
       // bullets
