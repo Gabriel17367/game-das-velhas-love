@@ -123,6 +123,7 @@ function Index() {
     bullets.current = [];
     enemies.current = [];
     particles.current = [];
+    floaters.current = [];
     spawnAcc.current = 0;
     hpRef.current = 100;
     scoreRef.current = 0;
