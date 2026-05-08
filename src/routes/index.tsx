@@ -87,6 +87,9 @@ function Index() {
   const bullets = useRef<Bullet[]>([]);
   const enemies = useRef<Enemy[]>([]);
   const particles = useRef<Particle[]>([]);
+  const floaters = useRef<
+    { x: number; y: number; vy: number; text: string; color: string; life: number; maxLife: number; size: number }[]
+  >([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const spawnAcc = useRef(0);
   const ammoRef = useRef(MAG_SIZE);
@@ -120,6 +123,7 @@ function Index() {
     bullets.current = [];
     enemies.current = [];
     particles.current = [];
+    floaters.current = [];
     spawnAcc.current = 0;
     hpRef.current = 100;
     scoreRef.current = 0;
@@ -470,6 +474,18 @@ function Index() {
               if (killed) {
                 scoreRef.current += e.reward;
                 setScore(scoreRef.current);
+                // floating reward text — escala com o tipo de inimigo
+                const lifeF = e.kind === "tank" ? 1.4 : e.kind === "slow" ? 1.1 : 0.9;
+                floaters.current.push({
+                  x: e.x,
+                  y: e.y - e.radius - 4,
+                  vy: -55,
+                  text: `+${e.reward}`,
+                  color: e.kind === "tank" ? "#ffd54a" : e.kind === "slow" ? "#c9b3ff" : "#ffffff",
+                  life: lifeF,
+                  maxLife: lifeF,
+                  size: e.kind === "tank" ? 28 : e.kind === "slow" ? 22 : 18,
+                });
               }
             }
           }
@@ -485,6 +501,14 @@ function Index() {
           pt.life -= dt;
         }
         particles.current = particles.current.filter((p) => p.life > 0);
+
+        // floating texts update
+        for (const f of floaters.current) {
+          f.y += f.vy * dt;
+          f.vy *= 0.96;
+          f.life -= dt;
+        }
+        floaters.current = floaters.current.filter((f) => f.life > 0);
 
         if (hpRef.current <= 0) {
           runningRef.current = false;
@@ -574,6 +598,33 @@ function Index() {
         ctx.beginPath();
         ctx.arc(p.x - cam.x, p.y - cam.y, p.size * (0.6 + a * 0.6), 0, Math.PI * 2);
         ctx.fill();
+      }
+      ctx.restore();
+
+      // floating reward texts
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const f of floaters.current) {
+        const t = f.life / f.maxLife; // 1 -> 0
+        const alpha = Math.min(1, t * 1.4);
+        const scale = 0.85 + (1 - t) * 0.25;
+        const size = f.size * scale;
+        ctx.font = `bold ${size}px system-ui, sans-serif`;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = `rgba(0,0,0,${0.7 * alpha})`;
+        ctx.fillStyle = f.color
+          .replace("#", "")
+          .match(/.{2}/g)
+          ? `rgba(${parseInt(f.color.slice(1, 3), 16)},${parseInt(
+              f.color.slice(3, 5),
+              16,
+            )},${parseInt(f.color.slice(5, 7), 16)},${alpha})`
+          : f.color;
+        const x = f.x - cam.x;
+        const y = f.y - cam.y;
+        ctx.strokeText(f.text, x, y);
+        ctx.fillText(f.text, x, y);
       }
       ctx.restore();
 
