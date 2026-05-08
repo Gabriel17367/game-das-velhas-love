@@ -119,6 +119,7 @@ function Index() {
     player.current = { x: WORLD_W / 2, y: WORLD_H / 2 };
     bullets.current = [];
     enemies.current = [];
+    particles.current = [];
     spawnAcc.current = 0;
     hpRef.current = 100;
     scoreRef.current = 0;
