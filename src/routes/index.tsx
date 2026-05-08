@@ -28,7 +28,10 @@ type Particle = Vec & {
   color: string;
 };
 
-const ENEMY_DEFS: Record<EnemyKind, Omit<Enemy, "x" | "y" | "hp" | "kind">> = {
+const ENEMY_DEFS: Record<
+  EnemyKind,
+  Omit<Enemy, "x" | "y" | "hp" | "kind" | "hitFlash">
+> = {
   grunt: {
     maxHp: 2,
     speed: 90,
