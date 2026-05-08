@@ -17,6 +17,15 @@ type Enemy = Vec & {
   damage: number; // dps on contact
   reward: number; // score on kill
   color: string;
+  hitFlash: number; // segundos restantes de flash branco ao ser atingido
+};
+type Particle = Vec & {
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
 };
 
 const ENEMY_DEFS: Record<EnemyKind, Omit<Enemy, "x" | "y" | "hp" | "kind">> = {
