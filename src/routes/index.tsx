@@ -304,8 +304,8 @@ function Index() {
           const d = Math.hypot(dx, dy) || 1;
           e.x += (dx / d) * e.speed * dt;
           e.y += (dy / d) * e.speed * dt;
-          if (d < 22) {
-            hpRef.current -= 30 * dt;
+          if (d < e.radius + 8) {
+            hpRef.current -= e.damage * dt;
             setHp(Math.max(0, Math.round(hpRef.current)));
           }
         }
@@ -315,11 +315,11 @@ function Index() {
           for (const e of enemies.current) {
             if (e.hp <= 0) continue;
             const dd = Math.hypot(b.x - e.x, b.y - e.y);
-            if (dd < 16) {
+            if (dd < e.radius + 2) {
               e.hp -= 1;
               b.life = 0;
               if (e.hp <= 0) {
-                scoreRef.current += 1;
+                scoreRef.current += e.reward;
                 setScore(scoreRef.current);
               }
             }
