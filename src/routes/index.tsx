@@ -221,11 +221,28 @@ function Index() {
         x = 0;
         y = Math.random() * WORLD_H;
       }
+      // weighted pick: mais grunts no início, slow/tank ficam comuns conforme a partida
+      const s = scoreRef.current;
+      const wGrunt = 70;
+      const wSlow = Math.min(35, 8 + s * 0.6);
+      const wTank = Math.min(20, 2 + s * 0.4);
+      const total = wGrunt + wSlow + wTank;
+      const r = Math.random() * total;
+      const kind: EnemyKind =
+        r < wGrunt ? "grunt" : r < wGrunt + wSlow ? "slow" : "tank";
+      const def = ENEMY_DEFS[kind];
       enemies.current.push({
         x,
         y,
-        hp: 2,
-        speed: 60 + Math.random() * 60,
+        kind,
+        hp: def.maxHp,
+        maxHp: def.maxHp,
+        // pequena variação de velocidade para não andarem em bloco
+        speed: def.speed * (0.9 + Math.random() * 0.2),
+        radius: def.radius,
+        damage: def.damage,
+        reward: def.reward,
+        color: def.color,
       });
     };
 
