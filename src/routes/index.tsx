@@ -7,7 +7,46 @@ export const Route = createFileRoute("/")({
 
 type Vec = { x: number; y: number };
 type Bullet = Vec & { vx: number; vy: number; life: number };
-type Enemy = Vec & { hp: number; speed: number };
+type EnemyKind = "grunt" | "slow" | "tank";
+type Enemy = Vec & {
+  kind: EnemyKind;
+  hp: number;
+  maxHp: number;
+  speed: number;
+  radius: number;
+  damage: number; // dps on contact
+  reward: number; // score on kill
+  color: string;
+};
+
+const ENEMY_DEFS: Record<EnemyKind, Omit<Enemy, "x" | "y" | "hp" | "kind">> = {
+  grunt: {
+    maxHp: 2,
+    speed: 90,
+    radius: 14,
+    damage: 30,
+    reward: 1,
+    color: "#e3433b",
+  },
+  slow: {
+    // resistente a meio caminho, devagar, pouco dano
+    maxHp: 5,
+    speed: 45,
+    radius: 16,
+    damage: 18,
+    reward: 3,
+    color: "#9b6bff",
+  },
+  tank: {
+    // muito HP, bem lento, dano alto
+    maxHp: 12,
+    speed: 30,
+    radius: 22,
+    damage: 50,
+    reward: 8,
+    color: "#3a7d44",
+  },
+};
 
 const WORLD_W = 1600;
 const WORLD_H = 1000;
