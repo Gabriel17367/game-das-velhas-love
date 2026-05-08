@@ -86,6 +86,8 @@ function Index() {
   const player = useRef<Vec>({ x: WORLD_W / 2, y: WORLD_H / 2 });
   const bullets = useRef<Bullet[]>([]);
   const enemies = useRef<Enemy[]>([]);
+  const particles = useRef<Particle[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const spawnAcc = useRef(0);
   const ammoRef = useRef(MAG_SIZE);
   const reloadingRef = useRef(false);
