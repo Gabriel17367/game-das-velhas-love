@@ -367,14 +367,34 @@ function Index() {
       for (const e of enemies.current) {
         const x = e.x - cam.x;
         const y = e.y - cam.y;
-        ctx.fillStyle = "#e3433b";
+        // tank ganha um anel de armadura; slow um halo roxo
+        if (e.kind === "tank") {
+          ctx.strokeStyle = "#1a1a1a";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(x, y, e.radius + 2, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (e.kind === "slow") {
+          ctx.fillStyle = "rgba(155,107,255,0.18)";
+          ctx.beginPath();
+          ctx.arc(x, y, e.radius + 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = e.color;
         ctx.beginPath();
-        ctx.arc(x, y, 14, 0, Math.PI * 2);
+        ctx.arc(x, y, e.radius, 0, Math.PI * 2);
         ctx.fill();
+        // health bar
+        const bw = e.radius * 2;
         ctx.fillStyle = "#1a1a1a";
-        ctx.fillRect(x - 14, y - 22, 28, 4);
+        ctx.fillRect(x - e.radius, y - e.radius - 8, bw, 4);
         ctx.fillStyle = "#3ddc84";
-        ctx.fillRect(x - 14, y - 22, (28 * e.hp) / 2, 4);
+        ctx.fillRect(
+          x - e.radius,
+          y - e.radius - 8,
+          (bw * e.hp) / e.maxHp,
+          4,
+        );
       }
 
       // bullets
