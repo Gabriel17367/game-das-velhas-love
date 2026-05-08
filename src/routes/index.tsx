@@ -17,9 +17,21 @@ type Enemy = Vec & {
   damage: number; // dps on contact
   reward: number; // score on kill
   color: string;
+  hitFlash: number; // segundos restantes de flash branco ao ser atingido
+};
+type Particle = Vec & {
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
 };
 
-const ENEMY_DEFS: Record<EnemyKind, Omit<Enemy, "x" | "y" | "hp" | "kind">> = {
+const ENEMY_DEFS: Record<
+  EnemyKind,
+  Omit<Enemy, "x" | "y" | "hp" | "kind" | "hitFlash">
+> = {
   grunt: {
     maxHp: 2,
     speed: 90,
@@ -74,6 +86,8 @@ function Index() {
   const player = useRef<Vec>({ x: WORLD_W / 2, y: WORLD_H / 2 });
   const bullets = useRef<Bullet[]>([]);
   const enemies = useRef<Enemy[]>([]);
+  const particles = useRef<Particle[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const spawnAcc = useRef(0);
   const ammoRef = useRef(MAG_SIZE);
   const reloadingRef = useRef(false);
@@ -105,6 +119,7 @@ function Index() {
     player.current = { x: WORLD_W / 2, y: WORLD_H / 2 };
     bullets.current = [];
     enemies.current = [];
+    particles.current = [];
     spawnAcc.current = 0;
     hpRef.current = 100;
     scoreRef.current = 0;
@@ -243,7 +258,136 @@ function Index() {
         damage: def.damage,
         reward: def.reward,
         color: def.color,
+        hitFlash: 0,
       });
+    };
+
+    // ---- Efeitos visuais e sonoros ----
+    const FX_PROFILE: Record<
+      EnemyKind,
+      {
+        hitCount: number;
+        killCount: number;
+        speed: number;
+        size: number;
+        flash: number;
+        // som
+        baseFreq: number;
+        killFreq: number;
+        gain: number;
+      }
+    > = {
+      grunt: {
+        hitCount: 8,
+        killCount: 18,
+        speed: 220,
+        size: 2,
+        flash: 0.08,
+        baseFreq: 520,
+        killFreq: 280,
+        gain: 0.08,
+      },
+      slow: {
+        hitCount: 12,
+        killCount: 28,
+        speed: 260,
+        size: 2.5,
+        flash: 0.1,
+        baseFreq: 380,
+        killFreq: 200,
+        gain: 0.11,
+      },
+      tank: {
+        hitCount: 18,
+        killCount: 50,
+        speed: 320,
+        size: 3.2,
+        flash: 0.14,
+        baseFreq: 240,
+        killFreq: 110,
+        gain: 0.15,
+      },
+    };
+
+    const ensureAudio = () => {
+      if (!audioCtxRef.current) {
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        audioCtxRef.current = new Ctx();
+      }
+      return audioCtxRef.current;
+    };
+
+    const playSfx = (kind: EnemyKind, isKill: boolean) => {
+      const ac = ensureAudio();
+      if (ac.state === "suspended") ac.resume();
+      const p = FX_PROFILE[kind];
+      const now2 = ac.currentTime;
+      const dur = isKill ? 0.28 : 0.09;
+      const startFreq = isKill ? p.killFreq * 1.4 : p.baseFreq;
+      const endFreq = isKill ? p.killFreq * 0.5 : p.baseFreq * 0.6;
+
+      const osc = ac.createOscillator();
+      osc.type = isKill ? "sawtooth" : "square";
+      osc.frequency.setValueAtTime(startFreq, now2);
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(40, endFreq),
+        now2 + dur,
+      );
+      const gain = ac.createGain();
+      const peak = isKill ? p.gain * 1.6 : p.gain;
+      gain.gain.setValueAtTime(0.0001, now2);
+      gain.gain.exponentialRampToValueAtTime(peak, now2 + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now2 + dur);
+      osc.connect(gain).connect(ac.destination);
+      osc.start(now2);
+      osc.stop(now2 + dur + 0.02);
+
+      if (isKill) {
+        // ruído curto para sensação de "explosão"
+        const bufSize = Math.floor(ac.sampleRate * 0.18);
+        const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+        }
+        const noise = ac.createBufferSource();
+        noise.buffer = buf;
+        const ng = ac.createGain();
+        ng.gain.value = p.gain * 0.9;
+        noise.connect(ng).connect(ac.destination);
+        noise.start(now2);
+      }
+    };
+
+    const spawnImpactParticles = (
+      e: Enemy,
+      bvx: number,
+      bvy: number,
+      isKill: boolean,
+    ) => {
+      const p = FX_PROFILE[e.kind];
+      const count = isKill ? p.killCount : p.hitCount;
+      // direção contrária à da bala (para "cuspir" partículas para fora)
+      const baseAng = Math.atan2(-bvy, -bvx);
+      const cone = isKill ? Math.PI : Math.PI / 2;
+      for (let i = 0; i < count; i++) {
+        const ang = baseAng + (Math.random() - 0.5) * cone;
+        const sp = p.speed * (0.4 + Math.random() * 0.9);
+        const life = (isKill ? 0.55 : 0.32) * (0.7 + Math.random() * 0.6);
+        particles.current.push({
+          x: e.x,
+          y: e.y,
+          vx: Math.cos(ang) * sp,
+          vy: Math.sin(ang) * sp,
+          life,
+          maxLife: life,
+          size: p.size * (0.7 + Math.random() * 0.9),
+          color: isKill && Math.random() < 0.4 ? "#ffd54a" : e.color,
+        });
+      }
     };
 
     const frame = (now: number) => {
@@ -304,6 +448,7 @@ function Index() {
           const d = Math.hypot(dx, dy) || 1;
           e.x += (dx / d) * e.speed * dt;
           e.y += (dy / d) * e.speed * dt;
+          if (e.hitFlash > 0) e.hitFlash -= dt;
           if (d < e.radius + 8) {
             hpRef.current -= e.damage * dt;
             setHp(Math.max(0, Math.round(hpRef.current)));
@@ -318,7 +463,11 @@ function Index() {
             if (dd < e.radius + 2) {
               e.hp -= 1;
               b.life = 0;
-              if (e.hp <= 0) {
+              const killed = e.hp <= 0;
+              e.hitFlash = FX_PROFILE[e.kind].flash;
+              spawnImpactParticles(e, b.vx, b.vy, killed);
+              playSfx(e.kind, killed);
+              if (killed) {
                 scoreRef.current += e.reward;
                 setScore(scoreRef.current);
               }
@@ -326,6 +475,16 @@ function Index() {
           }
         }
         enemies.current = enemies.current.filter((e) => e.hp > 0);
+
+        // particles update
+        for (const pt of particles.current) {
+          pt.x += pt.vx * dt;
+          pt.y += pt.vy * dt;
+          pt.vx *= 0.92;
+          pt.vy *= 0.92;
+          pt.life -= dt;
+        }
+        particles.current = particles.current.filter((p) => p.life > 0);
 
         if (hpRef.current <= 0) {
           runningRef.current = false;
@@ -384,6 +543,14 @@ function Index() {
         ctx.beginPath();
         ctx.arc(x, y, e.radius, 0, Math.PI * 2);
         ctx.fill();
+        // hit flash branco
+        if (e.hitFlash > 0) {
+          const a = Math.min(1, e.hitFlash / FX_PROFILE[e.kind].flash);
+          ctx.fillStyle = `rgba(255,255,255,${0.85 * a})`;
+          ctx.beginPath();
+          ctx.arc(x, y, e.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
         // health bar
         const bw = e.radius * 2;
         ctx.fillStyle = "#1a1a1a";
@@ -396,6 +563,19 @@ function Index() {
           4,
         );
       }
+
+      // particles (aditivo para sensação de brilho)
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (const p of particles.current) {
+        const a = Math.max(0, p.life / p.maxLife);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x - cam.x, p.y - cam.y, p.size * (0.6 + a * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
 
       // bullets
       ctx.fillStyle = "#ffd54a";
