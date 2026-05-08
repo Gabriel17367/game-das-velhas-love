@@ -87,6 +87,9 @@ function Index() {
   const bullets = useRef<Bullet[]>([]);
   const enemies = useRef<Enemy[]>([]);
   const particles = useRef<Particle[]>([]);
+  const floaters = useRef<
+    { x: number; y: number; vy: number; text: string; color: string; life: number; maxLife: number; size: number }[]
+  >([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const spawnAcc = useRef(0);
   const ammoRef = useRef(MAG_SIZE);
