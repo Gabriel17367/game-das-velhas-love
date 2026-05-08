@@ -255,7 +255,7 @@ function Index() {
         damage: def.damage,
         reward: def.reward,
         color: def.color,
-      });
+        hitFlash: 0,
     };
 
     const frame = (now: number) => {
